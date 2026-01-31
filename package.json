@@ -1,0 +1,42 @@
+{
+  "name": "geminisst",
+  "version": "1.0.0",
+  "description": "Revolutionary high-accuracy Audio-to-Text library powered by Gemini 2.5 Flash Lite with 1M+ context window.",
+  "keywords": [
+    "sst",
+    "stt",
+    "gemini",
+    "audio-to-text",
+    "transcription",
+    "multimodal",
+    "ai",
+    "google-genai"
+  ],
+  "license": "ISC",
+  "author": "Smart Tell Line",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "node examples/test_node.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "*",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
