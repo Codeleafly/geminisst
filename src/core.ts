@@ -144,3 +144,83 @@ export async function processAudioWithGemini(
     }
   }
 }
+
+/**
+ * Processes audio using the Gemini Files API (recommended for files > 20MB).
+ */
+export async function processAudioWithGeminiFileUri(
+  filePath: string,
+  mimeType: string,
+  apiKey: string,
+  options: SSTOptions
+): Promise<TranscriptionResult> {
+  if (!apiKey) {
+    throw new Error("API Key is required");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: apiKey });
+  const modelName = options.model || "gemini-2.5-flash-lite";
+
+  const config: any = {
+    thinkingConfig: {
+      includeThoughts: true,
+      thinkingBudget: options.thinkingBudget !== undefined ? options.thinkingBudget : -1
+    },
+    systemInstruction: DEFAULT_SYSTEM_INSTRUCTION
+  };
+
+  const promptText = options.prompt || "Transcribe this audio.";
+  const startTime = Date.now();
+
+  try {
+    // 1. Upload File using Files API
+    if (options.verbose) console.log(`[SSTLibrary] Uploading file to Gemini Files API...`);
+    const uploadResult = await (ai as any).files.upload({
+      file: filePath,
+      config: { mimeType: mimeType }
+    });
+
+    // 2. Generate Content with File URI
+    const response = await (ai as any).models.generateContent({
+      model: modelName,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: promptText },
+            {
+              fileData: {
+                fileUri: uploadResult.uri,
+                mimeType: uploadResult.mimeType
+              }
+            }
+          ]
+        }
+      ],
+      config: config
+    });
+
+    const endTime = Date.now();
+    const processingTimeSec = parseFloat(((endTime - startTime) / 1000).toFixed(2));
+
+    const candidate = response.candidates?.[0];
+    const textParts = candidate?.content?.parts || [];
+
+    return {
+      text: textParts.filter((p: any) => !p.thought).map((p: any) => p.text).join(''),
+      thoughts: textParts.filter((p: any) => p.thought).map((p: any) => p.text).join(''),
+      model: modelName,
+      usage: response.usageMetadata ? {
+        inputTokens: response.usageMetadata.promptTokenCount || 0,
+        outputTokens: response.usageMetadata.candidatesTokenCount || 0,
+        totalTokens: response.usageMetadata.totalTokenCount || 0,
+        thoughtsTokenCount: response.usageMetadata.thoughtsTokenCount || 0,
+        processingTimeSec: processingTimeSec
+      } : undefined
+    };
+
+  } catch (error: any) {
+    console.error("[SSTLibrary] Files API processing failed:", error);
+    throw error;
+  }
+}
