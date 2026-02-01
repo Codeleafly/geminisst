@@ -67,15 +67,30 @@ async function transcribeWithGemini3() {
 transcribeWithGemini3();
 ```
 
+### 3. Reuse File Uploads (Efficiency)
+Avoid re-uploading the same file. The API returns a `fileUri` valid for 48 hours.
+
+```javascript
+// 1. First call uploads the file
+const result1 = await audioToText('./large-audio.mp3', apiKey);
+console.log("File URI:", result1.fileUri); // e.g., https://...
+
+// 2. Second call reuses the URI (Instant processing, no upload)
+const result2 = await audioToText(result1.fileUri, apiKey, {
+    prompt: "Summarize this now.",
+    model: "gemini-3-flash-preview"
+});
+```
+
 ---
 
 ## 📖 API Reference
 
-### `audioToText(filePath, apiKey, options?)`
+### `audioToText(audioInput, apiKey, options?)`
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
-| `filePath` | `string` | Absolute path to the audio file. |
+| `audioInput` | `string` | Absolute path to the local audio file **OR** an existing `https://` File URI. |
 | `apiKey` | `string` | Your Google Gemini API Key. |
 | `options` | `SSTOptions` | (Optional) Configuration for models and thinking. |
 
@@ -95,6 +110,7 @@ transcribeWithGemini3();
 | :--- | :--- | :--- |
 | `text` | `string` | The verbatim transcript. |
 | `thoughts` | `string` | AI's internal reasoning process. |
+| `fileUri` | `string` | **New:** The reusable File URI (valid for 48h). |
 | `model` | `string` | The specific model version used. |
 | `usage` | `object` | Stats: `inputTokens`, `outputTokens`, `thoughtsTokenCount`, etc. |
 
