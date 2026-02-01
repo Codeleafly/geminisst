@@ -31,6 +31,24 @@ npm install geminisst
 
 ---
 
+## 🧪 Testing
+
+We provide dedicated test commands to verify different models safely.
+
+### 1. Default Test (Gemini 2.5 Flash Lite)
+Runs the standard transcription test using the default model.
+```bash
+npm test
+```
+
+### 2. Gemini 3 Test (Gemini 3 Flash Preview)
+Runs the test specifically using the Gemini 3 model with `thinkingLevel` configuration.
+```bash
+npm run test:gemini3
+```
+
+---
+
 ## 🛠️ Quick Start
 
 ### 1. Simple Transcription (Default)
