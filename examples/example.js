@@ -58,6 +58,10 @@ async function runTest() {
     const apiKey = process.env.GEMINI_API_KEY;
     const audioFile = resolve(__dirname, '../sample.mp3');
 
+    // Parse command line arguments
+    const args = process.argv.slice(2);
+    const runGemini3 = args.includes('2') || args.includes('gemini3');
+
     console.clear();
     if (!apiKey) {
         console.log(`${red}${bold}ERROR:${reset} GEMINI_API_KEY is missing in your .env file!`);
@@ -65,28 +69,28 @@ async function runTest() {
     }
 
     try {
-        // Test 1: Upload and Transcribe (Gemini 2.5)
-        console.log(`${yellow}🚀 Test 1: Upload & Transcribe (Gemini 2.5)...${reset}`);
-        const result1 = await audioToText(audioFile, apiKey, {
-            prompt: "Transcribe exactly.",
-            verbose: true
-        });
-        
-        runTranscriptionLog("Test 1 Result", result1, { model: "gemini-2.5-flash-lite" });
-
-        // Test 2: Reuse URI (Gemini 3)
-        if (result1.fileUri) {
-            console.log(`${bold}${cyan}─────────────────────────────────────────────────────────────────${reset}`);
-            console.log(`${yellow}⚡ Test 2: Reusing File URI (Skip Upload) + Gemini 3...${reset}`);
-            console.log(`${blue}   Target URI: ${result1.fileUri}${reset}`);
-            
-            const result2 = await audioToText(result1.fileUri, apiKey, {
+        if (runGemini3) {
+            // Test: Gemini 3 Flash Preview (Upload & Transcribe)
+            console.log(`${yellow}🚀 Test: Upload & Transcribe (Gemini 3 Flash Preview)...${reset}`);
+            const result = await audioToText(audioFile, apiKey, {
                 prompt: "Summarize this audio briefly.",
                 model: "gemini-3-flash-preview",
                 thinkingLevel: "high",
                 verbose: true
             });
-            runTranscriptionLog("Test 2 Result", result2, { model: "gemini-3-flash-preview", thinkingLevel: "high" });
+            runTranscriptionLog("Gemini 3 Result", result, { model: "gemini-3-flash-preview", thinkingLevel: "high" });
+
+        } else {
+            // Default Test: Gemini 2.5 Flash Lite (Upload & Transcribe)
+            console.log(`${yellow}🚀 Test: Upload & Transcribe (Gemini 2.5 Flash Lite)...${reset}`);
+            const result = await audioToText(audioFile, apiKey, {
+                prompt: "Transcribe exactly.",
+                verbose: true
+            });
+            
+            runTranscriptionLog("Gemini 2.5 Result", result, { model: "gemini-2.5-flash-lite" });
+            
+            console.log(`${yellow}💡 Tip: Run 'npm run test:gemini3' to test Gemini 3 model.${reset}\n`);
         }
 
     } catch (err) {
