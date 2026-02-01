@@ -1,6 +1,6 @@
 {
   "name": "geminisst",
-  "version": "1.0.1-dev",
+  "version": "1.0.2-dev",
   "description": "Revolutionary high-accuracy Audio-to-Text library powered by Gemini 2.5 Flash Lite with 1M+ context window.",
   "keywords": [
     "sst",
