@@ -23,23 +23,23 @@ export async function processAudioWithGemini(
     throw new Error("API Key is required");
   }
 
-  // Initialize the AI client according to documentation: new GoogleGenAI({ apiKey })
+  // Initialize the AI client according to documentation
   const ai = new GoogleGenAI({ apiKey: apiKey });
   const modelName = options.model || "gemini-2.5-flash-lite";
   
-  // Configure thinking mode as per Gemini 2.5 specifications in documentation
+  // Configure thinking mode as per Gemini specifications in documentation
+  // For Gemini 2.5 series, we use thinkingBudget.
   const config: any = {
       thinkingConfig: {
-        includeThoughts: true, // Enabled to allow monitoring thoughts if needed
-        thinkingBudget: -1    // Dynamic thinking enabled (-1)
+        includeThoughts: true,
+        thinkingBudget: options.thinkingBudget !== undefined ? options.thinkingBudget : -1 // Default to dynamic
       },
-      // Fixed System Instruction: Users cannot override this as it is the core STT logic.
       systemInstruction: DEFAULT_SYSTEM_INSTRUCTION
   };
 
   if (options.verbose) {
     console.log(`[SSTLibrary] Model: ${modelName}`);
-    console.log(`[SSTLibrary] Thinking: Dynamic (-1)`);
+    console.log(`[SSTLibrary] Thinking Budget: ${config.thinkingConfig.thinkingBudget}`);
     console.log(`[SSTLibrary] System Instruction: Locked (Core)`);
   }
 
@@ -48,8 +48,7 @@ export async function processAudioWithGemini(
 
   try {
     /**
-     * Using the syntax from the provided documentation:
-     * ai.models.generateContent({ model, contents, config })
+     * Using the latest syntax from the documentation
      */
     const response = await (ai as any).models.generateContent({
       model: modelName,
@@ -73,11 +72,10 @@ export async function processAudioWithGemini(
     const endTime = Date.now();
     const processingTimeSec = parseFloat(((endTime - startTime) / 1000).toFixed(2));
 
-    // Handle the response according to the documentation structure
     const candidate = response.candidates?.[0];
     const textParts = candidate?.content?.parts || [];
     
-    // Combine text parts and thought parts separately
+    // According to documentation, thoughts are in parts where part.thought is true
     const transcriptText = textParts
       .filter((p: any) => !p.thought)
       .map((p: any) => p.text)
@@ -88,11 +86,12 @@ export async function processAudioWithGemini(
       .map((p: any) => p.text)
       .join('') || "";
     
-    // Extract usage details
+    // Extract usage details including thoughtsTokenCount
     const usage = response.usageMetadata ? {
       inputTokens: response.usageMetadata.promptTokenCount || 0,
       outputTokens: response.usageMetadata.candidatesTokenCount || 0,
       totalTokens: response.usageMetadata.totalTokenCount || 0,
+      thoughtsTokenCount: response.usageMetadata.thoughtsTokenCount || 0,
       processingTimeSec: processingTimeSec
     } : undefined;
 
@@ -104,12 +103,10 @@ export async function processAudioWithGemini(
     };
 
   } catch (error) {
-    // If the newer ai.models.generateContent syntax is not available in the installed SDK version,
-    // fallback to the widely supported getGenerativeModel method while keeping logic consistent.
-    if (options.verbose) console.warn("[SSTLibrary] Newer syntax failed, trying fallback...");
+    if (options.verbose) console.warn("[SSTLibrary] Primary method failed, attempting fallback with getGenerativeModel...");
     
     try {
-        const model = (ai as any).getGenerativeModel({ model: modelName }, config);
+        const model = (ai as any).getGenerativeModel({ model: modelName }, { systemInstruction: DEFAULT_SYSTEM_INSTRUCTION });
         const result = await model.generateContent({
             contents: [{
                 role: 'user',
@@ -117,8 +114,12 @@ export async function processAudioWithGemini(
                     { text: promptText },
                     { inlineData: { mimeType, data: audioData } }
                 ]
-            }]
+            }],
+            generationConfig: {
+                thinkingConfig: config.thinkingConfig
+            }
         });
+        
         const endTime = Date.now();
         const processingTimeSec = parseFloat(((endTime - startTime) / 1000).toFixed(2));
         const resp = result.response;
@@ -133,6 +134,7 @@ export async function processAudioWithGemini(
                 inputTokens: resp.usageMetadata.promptTokenCount,
                 outputTokens: resp.usageMetadata.candidatesTokenCount,
                 totalTokens: resp.usageMetadata.totalTokenCount,
+                thoughtsTokenCount: resp.usageMetadata.thoughtsTokenCount,
                 processingTimeSec: processingTimeSec
             } : undefined
         };
@@ -140,5 +142,85 @@ export async function processAudioWithGemini(
         console.error("[SSTLibrary] Transcription failed:", fallbackError);
         throw fallbackError;
     }
+  }
+}
+
+/**
+ * Processes audio using the Gemini Files API (recommended for files > 20MB).
+ */
+export async function processAudioWithGeminiFileUri(
+  filePath: string,
+  mimeType: string,
+  apiKey: string,
+  options: SSTOptions
+): Promise<TranscriptionResult> {
+  if (!apiKey) {
+    throw new Error("API Key is required");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: apiKey });
+  const modelName = options.model || "gemini-2.5-flash-lite";
+
+  const config: any = {
+    thinkingConfig: {
+      includeThoughts: true,
+      thinkingBudget: options.thinkingBudget !== undefined ? options.thinkingBudget : -1
+    },
+    systemInstruction: DEFAULT_SYSTEM_INSTRUCTION
+  };
+
+  const promptText = options.prompt || "Transcribe this audio.";
+  const startTime = Date.now();
+
+  try {
+    // 1. Upload File using Files API
+    if (options.verbose) console.log(`[SSTLibrary] Uploading file to Gemini Files API...`);
+    const uploadResult = await (ai as any).files.upload({
+      file: filePath,
+      config: { mimeType: mimeType }
+    });
+
+    // 2. Generate Content with File URI
+    const response = await (ai as any).models.generateContent({
+      model: modelName,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: promptText },
+            {
+              fileData: {
+                fileUri: uploadResult.uri,
+                mimeType: uploadResult.mimeType
+              }
+            }
+          ]
+        }
+      ],
+      config: config
+    });
+
+    const endTime = Date.now();
+    const processingTimeSec = parseFloat(((endTime - startTime) / 1000).toFixed(2));
+
+    const candidate = response.candidates?.[0];
+    const textParts = candidate?.content?.parts || [];
+
+    return {
+      text: textParts.filter((p: any) => !p.thought).map((p: any) => p.text).join(''),
+      thoughts: textParts.filter((p: any) => p.thought).map((p: any) => p.text).join(''),
+      model: modelName,
+      usage: response.usageMetadata ? {
+        inputTokens: response.usageMetadata.promptTokenCount || 0,
+        outputTokens: response.usageMetadata.candidatesTokenCount || 0,
+        totalTokens: response.usageMetadata.totalTokenCount || 0,
+        thoughtsTokenCount: response.usageMetadata.thoughtsTokenCount || 0,
+        processingTimeSec: processingTimeSec
+      } : undefined
+    };
+
+  } catch (error: any) {
+    console.error("[SSTLibrary] Files API processing failed:", error);
+    throw error;
   }
 }
