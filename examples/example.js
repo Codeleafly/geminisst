@@ -60,6 +60,7 @@ async function runTest() {
             console.log(`${blue}├─ Time Taken:${reset} ${result.usage.processingTimeSec}s`);
             console.log(`${blue}├─ Input Tokens:${reset} ${result.usage.inputTokens}`);
             console.log(`${blue}├─ Output Tokens:${reset} ${result.usage.outputTokens}`);
+            console.log(`${blue}├─ Thoughts Tokens:${reset} ${result.usage.thoughtsTokenCount || 0}`);
             console.log(`${blue}└─ Total Tokens:${reset}  ${result.usage.totalTokens}`);
         }
         console.log(`\n${bold}${green}✅ Process Completed Successfully!${reset}\n`);

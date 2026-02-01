@@ -17,6 +17,11 @@ export interface SSTOptions {
    * Verbose logging.
    */
   verbose?: boolean;
+  /**
+   * Optional thinking budget for Gemini 2.5 models.
+   * -1 for dynamic, 0 to disable, or a value between 512 and 24576 for Flash Lite.
+   */
+  thinkingBudget?: number;
 }
 
 export interface TranscriptionResult {
@@ -27,6 +32,7 @@ export interface TranscriptionResult {
     inputTokens: number;
     outputTokens: number;
     totalTokens: number;
+    thoughtsTokenCount?: number;
     processingTimeSec: number;
   };
 }

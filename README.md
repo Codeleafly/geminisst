@@ -10,11 +10,12 @@ Whether it's a 3-second voice clip or a multi-hour podcast, `geminisst` processe
 
 *   **Gemini 2.5 Flash Lite Engine:** Optimized for the latest AI architecture, ensuring ultra-fast response times.
 *   **1M+ Context Window:** Process massive audio files (up to several hours) in a single request.
-*   **Dynamic Thinking (Reasoning):** Uses `thinkingBudget: -1` to allow the AI to reason about the audio (accents, context, noise) before transcribing.
+*   **Dynamic Thinking (Reasoning):** Uses `thinkingBudget: -1` (default) to allow the AI to reason about the audio (accents, context, noise) before transcribing.
 *   **AI Thought Summaries:** Access the AI's internal reasoning process (`thoughts`) to understand *how* it arrived at the transcript.
+*   **Advanced Thinking Control:** Fine-tune thinking behavior with `thinkingBudget` (512 to 24576 for Flash Lite).
 *   **Locked Core Logic:** Built-in, unoverrideable system instructions ensure the AI acts as a pure transcription engine (no summaries, no opinions, 100% verbatim).
 *   **Automatic Language Detection:** Seamlessly handles Hindi, English, Hinglish, and many other languages without manual configuration.
-*   **Processing Metadata:** Real-time tracking of token usage and exact processing time in seconds.
+*   **Processing Metadata:** Real-time tracking of token usage (including thoughts) and exact processing time in seconds.
 *   **TypeScript Native:** Full type safety and IntelliSense support for a superior developer experience.
 
 ---
@@ -52,7 +53,8 @@ import { audioToText } from 'geminisst';
 async function transcribeWithInsights() {
   const result = await audioToText('./interview.wav', 'YOUR_API_KEY', {
     prompt: "The audio is in a mix of Hindi and English. Please use Devanagari for Hindi parts.",
-    verbose: true
+    verbose: true,
+    thinkingBudget: -1 // Enable dynamic thinking
   });
 
   // Access the AI's "Internal Monologue"
@@ -66,6 +68,7 @@ async function transcribeWithInsights() {
   // Performance metrics
   console.log(`Finished in ${result.usage.processingTimeSec}s`);
   console.log(`Total Tokens used: ${result.usage.totalTokens}`);
+  console.log(`Thinking Tokens: ${result.usage.thoughtsTokenCount}`);
 }
 
 transcribeWithInsights();
@@ -90,6 +93,7 @@ transcribeWithInsights();
 | `prompt` | `string` | `undefined` | Style/Language guidance (e.g., "Transcribe in English letters"). |
 | `model` | `string` | `"gemini-2.5-flash-lite"` | Override default model. |
 | `verbose` | `boolean` | `false` | Log internal steps for debugging. |
+| `thinkingBudget` | `number` | `-1` | Number of tokens for reasoning (-1 = dynamic, 0 = off, 512-24576 for Flash Lite). |
 
 ### `TranscriptionResult`
 
@@ -98,7 +102,7 @@ transcribeWithInsights();
 | `text` | `string` | The 100% accurate, verbatim transcript. |
 | `thoughts` | `string` | AI's thought summary explaining the reasoning/language detection. |
 | `model` | `string` | The specific model version used. |
-| `usage` | `object` | Stats: `inputTokens`, `outputTokens`, `totalTokens`, `processingTimeSec`. |
+| `usage` | `object` | Stats: `inputTokens`, `outputTokens`, `totalTokens`, `thoughtsTokenCount`, `processingTimeSec`. |
 
 ---
 
