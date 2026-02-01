@@ -8,15 +8,16 @@ import { DEFAULT_SYSTEM_INSTRUCTION } from './constants.js';
 /**
  * Processes audio using the Gemini Files API and GenerateContent API.
  * Automatically handles model-specific configurations (thinking budget vs level).
+ * Supports both local file paths and existing File URIs.
  * 
- * @param filePath - Path to the audio file
+ * @param audioInput - Path to the audio file OR an existing File URI
  * @param mimeType - MIME type of the audio
  * @param apiKey - Google Gemini API Key
  * @param options - Configuration options
  * @returns Promise resolving to the transcription result
  */
 export async function processAudio(
-  filePath: string,
+  audioInput: string,
   mimeType: string,
   apiKey: string,
   options: SSTOptions
@@ -37,20 +38,12 @@ export async function processAudio(
   };
 
   if (isGemini3) {
-    // Gemini 3 uses thinkingLevel
     if (options.thinkingLevel) {
       thinkingConfig.thinkingLevel = options.thinkingLevel;
     } 
-    // If no level specified, we let the model default (usually "high") or we could enforce "low" if desired, 
-    // but the user requirement said "user Abhi thinking budget ko control bhi kar paye" implying user choice.
-    // If the user *tried* to set thinkingBudget on a Gemini 3 model, we should probably warn or map it?
-    // For now, we stick to the requested behavior: "thinking budget ke badle thinking level ka use karna chahie"
   } else if (isGemini2_5) {
-    // Gemini 2.5 uses thinkingBudget
-    // User requirement: "default dynamic thinking -1 Ho Jaise pahle tha"
     thinkingConfig.thinkingBudget = options.thinkingBudget !== undefined ? options.thinkingBudget : -1;
   } else {
-      // Fallback or other models (assume 2.5 behavior or generic)
        thinkingConfig.thinkingBudget = options.thinkingBudget !== undefined ? options.thinkingBudget : -1;
   }
 
@@ -73,16 +66,20 @@ export async function processAudio(
   const startTime = Date.now();
 
   try {
-    // 1. Upload File using Files API
-    // The documentation recommends this for all file sizes for robustness.
-    if (options.verbose) console.log(`[SSTLibrary] Uploading file to Gemini Files API...`);
+    let fileUri = audioInput;
     
-    const uploadResult = await (ai as any).files.upload({
-      file: filePath,
-      config: { mimeType: mimeType }
-    });
-
-    if (options.verbose) console.log(`[SSTLibrary] File uploaded: ${uploadResult.uri}`);
+    // 1. Upload File (if it's not already a URI)
+    if (!audioInput.startsWith("https://")) {
+        if (options.verbose) console.log(`[SSTLibrary] Uploading file to Gemini Files API...`);
+        const uploadResult = await (ai as any).files.upload({
+          file: audioInput,
+          config: { mimeType: mimeType }
+        });
+        fileUri = uploadResult.uri;
+        if (options.verbose) console.log(`[SSTLibrary] File uploaded: ${fileUri}`);
+    } else {
+        if (options.verbose) console.log(`[SSTLibrary] Using existing File URI: ${fileUri}`);
+    }
 
     // 2. Generate Content with File URI
     const response = await (ai as any).models.generateContent({
@@ -94,8 +91,8 @@ export async function processAudio(
             { text: promptText },
             {
               fileData: {
-                fileUri: uploadResult.uri,
-                mimeType: uploadResult.mimeType
+                fileUri: fileUri,
+                mimeType: mimeType
               }
             }
           ]
@@ -125,6 +122,7 @@ export async function processAudio(
       text: transcriptText,
       thoughts: thoughtText,
       model: modelName,
+      fileUri: fileUri, // Return the URI for reuse
       usage: response.usageMetadata ? {
         inputTokens: response.usageMetadata.promptTokenCount || 0,
         outputTokens: response.usageMetadata.candidatesTokenCount || 0,

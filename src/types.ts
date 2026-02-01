@@ -39,6 +39,11 @@ export interface TranscriptionResult {
   text: string;
   thoughts?: string;
   model: string;
+  /**
+   * The URI of the uploaded file (valid for 48 hours).
+   * can be reused in subsequent calls to avoid re-uploading.
+   */
+  fileUri?: string;
   usage?: {
     inputTokens: number;
     outputTokens: number;

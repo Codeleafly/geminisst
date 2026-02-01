@@ -75,23 +75,59 @@ async function runTest() {
         return;
     }
 
-    if (runGemini3) {
-        // Test 2: Gemini 3 Flash Preview (with Thinking Level)
-        await runTranscription("Test 2: Gemini 3 Flash Preview (High Thinking)", audioFile, apiKey, {
-            prompt: "Transcribe exactly.",
+    // Test 1: Default (Gemini 2.5 Flash Lite)
+    const result1 = await audioToText(audioFile, apiKey, {
+        prompt: "Transcribe exactly.",
+        verbose: true
+    });
+    
+    runTranscriptionLog("Test 1: Default (Gemini 2.5 Flash Lite)", result1, { model: "gemini-2.5-flash-lite" });
+
+    // Test 2: Reuse URI (Gemini 3 Flash Preview)
+    if (result1.fileUri) {
+        console.log(`${yellow}⚡ Reusing File URI for Test 2 (No Re-upload needed)...${reset}`);
+        console.log(`${blue}   URI: ${result1.fileUri}${reset}\n`);
+
+        const result2 = await audioToText(result1.fileUri, apiKey, {
+            prompt: "Summarize this audio briefly.",
             model: "gemini-3-flash-preview",
             thinkingLevel: "high",
             verbose: true
         });
-    } else {
-        // Default: Test 1 (Gemini 2.5 Flash Lite)
-        await runTranscription("Test 1: Default (Gemini 2.5 Flash Lite)", audioFile, apiKey, {
-            prompt: "Transcribe exactly.",
-            verbose: true
-        });
-        
-        console.log(`${yellow}💡 Tip: Run 'npm run test:gemini3' (or 'node examples/example.js 2') to test Gemini 3 model.${reset}\n`);
+        runTranscriptionLog("Test 2: Reuse URI + Gemini 3", result2, { model: "gemini-3-flash-preview", thinkingLevel: "high" });
     }
+}
+
+async function runTranscriptionLog(name, result, options) {
+    console.log(`${bold}${cyan}─────────────────────────────────────────────────────────────────${reset}`);
+    console.log(`${yellow}⚡ Completed: ${name}...${reset}`);
+    console.log(`${blue}⚙️  Model: ${reset}${options.model || 'Default'}`);
+    console.log(`${bold}${cyan}─────────────────────────────────────────────────────────────────${reset}\n`);
+
+    // 1. Display Thoughts if available
+    if (result.thoughts) {
+        console.log(`${bold}${magenta}🧠 AI REASONING (THOUGHTS):${reset}`);
+        console.log(`${cyan}${result.thoughts}${reset}\n`);
+    }
+
+    // 2. Display Final Transcript
+    console.log(`${bold}${green}📝 RESULT:${reset}`);
+    console.log(`${bold}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}`);
+    console.log(result.text);
+    console.log(`${bold}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}\n`);
+
+    // 3. Display Metadata
+    console.log(`${bold}${yellow}📊 METADATA:${reset}`);
+    console.log(`${blue}├─ Model:${reset} ${result.model}`);
+    console.log(`${blue}├─ File URI:${reset} ${result.fileUri || 'N/A'}`);
+    if (result.usage) {
+        console.log(`${blue}├─ Time Taken:${reset} ${result.usage.processingTimeSec}s`);
+        console.log(`${blue}├─ Input Tokens:${reset} ${result.usage.inputTokens}`);
+        console.log(`${blue}├─ Output Tokens:${reset} ${result.usage.outputTokens}`);
+        console.log(`${blue}├─ Thoughts Tokens:${reset} ${result.usage.thoughtsTokenCount || 0}`);
+        console.log(`${blue}└─ Total Tokens:${reset}  ${result.usage.totalTokens}`);
+    }
+    console.log(`\n${bold}${green}✅ Process Completed Successfully!${reset}\n`);
 }
 
 runTest();
