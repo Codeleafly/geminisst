@@ -65,25 +65,33 @@ async function runTest() {
     const apiKey = process.env.GEMINI_API_KEY;
     const audioFile = resolve(__dirname, '../sample.mp3');
 
+    // Parse command line arguments
+    const args = process.argv.slice(2);
+    const runGemini3 = args.includes('2') || args.includes('gemini3');
+
     console.clear();
     if (!apiKey) {
         console.log(`${red}${bold}ERROR:${reset} GEMINI_API_KEY is missing in your .env file!`);
         return;
     }
 
-    // Test 1: Default (Gemini 2.5 Flash Lite)
-    await runTranscription("Test 1: Default (Gemini 2.5 Flash Lite)", audioFile, apiKey, {
-        prompt: "Transcribe exactly.",
-        verbose: true
-    });
-
-    // Test 2: Gemini 3 Flash Preview (with Thinking Level)
-    await runTranscription("Test 2: Gemini 3 Flash Preview (High Thinking)", audioFile, apiKey, {
-        prompt: "Transcribe exactly.",
-        model: "gemini-3-flash-preview",
-        thinkingLevel: "high",
-        verbose: true
-    });
+    if (runGemini3) {
+        // Test 2: Gemini 3 Flash Preview (with Thinking Level)
+        await runTranscription("Test 2: Gemini 3 Flash Preview (High Thinking)", audioFile, apiKey, {
+            prompt: "Transcribe exactly.",
+            model: "gemini-3-flash-preview",
+            thinkingLevel: "high",
+            verbose: true
+        });
+    } else {
+        // Default: Test 1 (Gemini 2.5 Flash Lite)
+        await runTranscription("Test 1: Default (Gemini 2.5 Flash Lite)", audioFile, apiKey, {
+            prompt: "Transcribe exactly.",
+            verbose: true
+        });
+        
+        console.log(`${yellow}💡 Tip: Run 'npm run test:gemini3' (or 'node examples/example.js 2') to test Gemini 3 model.${reset}\n`);
+    }
 }
 
 runTest();

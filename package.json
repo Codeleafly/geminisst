@@ -26,6 +26,7 @@
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "test": "node examples/example.js",
+    "test:gemini3": "node examples/example.js 2",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
