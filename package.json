@@ -1,7 +1,11 @@
 {
   "name": "geminisst",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Revolutionary high-accuracy Audio-to-Text library powered by Gemini 2.5 Flash Lite with 1M+ context window.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Codeleafly/geminisst.git"
+  },
   "keywords": [
     "sst",
     "stt",

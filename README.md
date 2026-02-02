@@ -1,6 +1,6 @@
 # geminisst 🎙️
 
-**geminisst** is a revolutionary, professional-grade Node.js library for high-accuracy **Audio-to-Text** conversion. Powered by **Google's Gemini 2.5 Flash Lite** (default) and compatible with the newest **Gemini 3** series, it offers a massive **1 Million+ context window** and next-gen multimodal understanding.
+**geminisst** is a professional-grade Node.js library for high-accuracy **Audio-to-Text** conversion. Powered by **Google's Gemini 2.5 Flash Lite** (default) and **Gemini 3** series, it offers a massive **1 Million+ context window** and next-gen multimodal understanding.
 
 Unlike traditional STT engines, `geminisst` leverages the **Files API** for all requests, ensuring stability and accuracy whether you are processing a 3-second voice note or a multi-hour lecture.
 
@@ -8,16 +8,13 @@ Unlike traditional STT engines, `geminisst` leverages the **Files API** for all 
 
 ## 🚀 Key Features
 
-*   **Gemini 2.5 Flash Lite (Default):** Optimized for cost-efficiency and speed, pre-configured with `thinkingBudget: -1` (Dynamic Thinking).
-*   **Gemini 3 Ready:** Full support for the latest **Gemini 3 Flash** and **Pro** models using `thinkingLevel`.
-*   **Universal Files API:** All audio is processed via the robust Files API, eliminating size limits and base64 overhead.
-*   **Intelligent Reasoning:**
-    *   **Gemini 2.5:** Controls reasoning via `thinkingBudget` (Default: Dynamic).
-    *   **Gemini 3:** Controls reasoning via `thinkingLevel` (minimal, low, medium, high).
-*   **Locked Core Logic:** Built-in system instructions ensure 100% verbatim transcription (no summaries, no opinions).
-*   **Automatic Language Detection:** Seamlessly handles Hindi, English, Hinglish, and mixed languages.
-*   **Rich Metadata:** Real-time tracking of token usage, thoughts, and processing time.
-*   **TypeScript Native:** Full type safety and IntelliSense.
+*   **Gemini 2.5 Flash Lite (Default):** Optimized for cost-efficiency and speed.
+*   **Gemini 3 Ready:** Full support for **Gemini 3 Flash** and **Pro** models.
+*   **Universal Files API:** No base64 overhead. Supports large files seamlessly.
+*   **Intelligent Reasoning:** Detailed "thoughts" explaining the transcription process.
+*   **Locked Core Logic:** Built-in instructions ensure 100% verbatim transcription.
+*   **Multilingual:** Native support for English, Hindi, Hinglish, and mixed languages.
+*   **Usage Tracking:** Complete metadata including token counts and processing time.
 
 ---
 
@@ -27,77 +24,119 @@ Unlike traditional STT engines, `geminisst` leverages the **Files API** for all 
 npm install geminisst
 ```
 
-*Note: You need a Google Gemini API Key. Get one for free at [Google AI Studio](https://aistudio.google.com/).*
+### Supported Formats
+The library automatically detects the following formats:
+- **Audio:** `.mp3`, `.wav`, `.ogg`, `.flac`, `.aac`, `.aiff`, `.m4a`
+- **Video:** `.mp4` (extracted audio)
 
----
-
-## 🧪 Testing
-
-We provide dedicated test commands to verify different models safely.
-
-### 1. Default Test (Gemini 2.5 Flash Lite)
-Runs the standard transcription test using the default model.
-```bash
-npm test
-```
-
-### 2. Gemini 3 Test (Gemini 3 Flash Preview)
-Runs the test specifically using the Gemini 3 model with `thinkingLevel` configuration.
-```bash
-npm run test:gemini3
+### Setup Environment
+It is recommended to use a `.env` file for your API key:
+```env
+GEMINI_API_KEY=your_api_key_here
 ```
 
 ---
 
-## 🛠️ Quick Start
+## 🛠️ Complete Examples
 
-### 1. Simple Transcription (Default)
-Uses **Gemini 2.5 Flash Lite** with Dynamic Thinking.
+### 1. Simple Transcription (Quick Start)
+The simplest way to convert audio to text using the default model (**Gemini 2.5 Flash Lite**).
 
 ```javascript
 import { audioToText } from 'geminisst';
 
 const apiKey = "YOUR_GEMINI_API_KEY";
-const result = await audioToText('./meeting.mp3', apiKey);
 
-console.log("Transcript:", result.text);
+async function main() {
+  try {
+    const result = await audioToText('./sample.mp3', apiKey);
+    
+    console.log("--- Transcript ---");
+    console.log(result.text);
+  } catch (error) {
+    console.error("Error:", error.message);
+  }
+}
+
+main();
 ```
 
-### 2. Using Gemini 3 (Advanced)
-Switch to **Gemini 3 Flash** and use `thinkingLevel`.
+### 2. Using Gemini 3 (High Reasoning)
+Configure **Gemini 3** with specific `thinkingLevel` for complex audio or specific formatting.
 
 ```javascript
 import { audioToText } from 'geminisst';
 
-async function transcribeWithGemini3() {
-  const result = await audioToText('./interview.wav', 'YOUR_API_KEY', {
-    model: "gemini-3-flash-preview", // Switch model
-    thinkingLevel: "high",           // Gemini 3 specific config
-    verbose: true
-  });
+const apiKey = "YOUR_GEMINI_API_KEY";
 
-  if (result.thoughts) {
-    console.log("Gemini 3 Thoughts:", result.thoughts);
-  }
+async function transcribeWithGemini3() {
+  const options = {
+    model: "gemini-3-flash-preview", // Use Gemini 3 model
+    thinkingLevel: "high",           // Gemini 3 specific: minimal, low, medium, high
+    prompt: "Transcribe this interview and format it with speaker labels.",
+    verbose: true                    // Show upload progress in console
+  };
+
+  const result = await audioToText('./interview.wav', apiKey, options);
+
+  console.log("AI Thoughts:", result.thoughts); // View the AI's reasoning
   console.log("Transcript:", result.text);
 }
 
 transcribeWithGemini3();
 ```
 
-### 3. Reuse File Uploads (Efficiency)
-Avoid re-uploading the same file. The API returns a `fileUri` valid for 48 hours.
+### 3. Reusing File URIs (Performance Optimization)
+The Files API saves your audio for 48 hours. You can reuse the `fileUri` to perform multiple operations (like different prompts) on the same file without re-uploading.
 
 ```javascript
-// 1. First call uploads the file
-const result1 = await audioToText('./large-audio.mp3', apiKey);
-console.log("File URI:", result1.fileUri); // e.g., https://...
+import { audioToText } from 'geminisst';
 
-// 2. Second call reuses the URI (Instant processing, no upload)
-const result2 = await audioToText(result1.fileUri, apiKey, {
-    prompt: "Summarize this now.",
+const apiKey = "YOUR_GEMINI_API_KEY";
+
+async function reuseFile() {
+  // First Call: Uploads and transcribes
+  const firstPass = await audioToText('./meeting.mp3', apiKey, {
+    prompt: "Give me the full verbatim transcript."
+  });
+  
+  const uri = firstPass.fileUri; // Store this URI
+  console.log("File URI stored for reuse:", uri);
+
+  // Second Call: Uses the URI (Instant - no upload time)
+  const secondPass = await audioToText(uri, apiKey, {
+    prompt: "Now summarize the main action items from the same audio.",
     model: "gemini-3-flash-preview"
-});
+  });
+
+  console.log("Summary:", secondPass.text);
+}
+
+reuseFile();
+```
+
+### 4. Advanced Metadata & Token Usage
+Track exactly how many tokens were used and how long the processing took.
+
+```javascript
+import { audioToText } from 'geminisst';
+
+async function trackUsage() {
+  const result = await audioToText('./lecture.mp3', 'API_KEY', {
+    thinkingBudget: 1024 // Gemini 2.5 specific: Control reasoning tokens
+  });
+
+  if (result.usage) {
+    console.log(`Model: ${result.model}`);
+    console.log(`Processing Time: ${result.usage.processingTimeSec}s`);
+    console.log(`Input Tokens: ${result.usage.inputTokens}`);
+    console.log(`Output Tokens: ${result.usage.outputTokens}`);
+    console.log(`Thoughts Tokens: ${result.usage.thoughtsTokenCount}`);
+    console.log(`Total Tokens: ${result.usage.totalTokens}`);
+  }
+}
+
+trackUsage();
 ```
 
 ---
@@ -108,44 +147,52 @@ const result2 = await audioToText(result1.fileUri, apiKey, {
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
-| `audioInput` | `string` | Absolute path to the local audio file **OR** an existing `https://` File URI. |
+| `audioInput` | `string` | Local path (e.g., `./audio.mp3`) **OR** File URI (`https://...`). |
 | `apiKey` | `string` | Your Google Gemini API Key. |
-| `options` | `SSTOptions` | (Optional) Configuration for models and thinking. |
+| `options` | `SSTOptions` | Optional configuration object. |
 
-### `SSTOptions`
+#### `SSTOptions` Object
 
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `prompt` | `string` | `undefined` | Guidance (e.g., "Transcribe in Hindi"). |
-| `model` | `string` | `"gemini-2.5-flash-lite"` | The model to use. Supports both 2.5 and 3 series. |
-| `verbose` | `boolean` | `false` | Log upload and processing steps. |
-| `thinkingBudget` | `number` | `-1` | **(Gemini 2.5 Only)** Token budget for reasoning (-1 = dynamic). |
-| `thinkingLevel` | `string` | `undefined` | **(Gemini 3 Only)** "minimal", "low", "medium", "high". |
+```typescript
+{
+  prompt?: string;          // Specific instructions (e.g., "Output in JSON")
+  model?: string;           // "gemini-2.5-flash-lite" (default) or "gemini-3-flash-preview"
+  verbose?: boolean;        // Logs upload and API status to console
+  thinkingBudget?: number;  // (Gemini 2.5) -1 for dynamic, or specific token count
+  thinkingLevel?: string;   // (Gemini 3) "minimal" | "low" | "medium" | "high"
+}
+```
 
-### `TranscriptionResult`
+#### `TranscriptionResult` Object
 
-| Property | Type | Description |
-| :--- | :--- | :--- |
-| `text` | `string` | The verbatim transcript. |
-| `thoughts` | `string` | AI's internal reasoning process. |
-| `fileUri` | `string` | **New:** The reusable File URI (valid for 48h). |
-| `model` | `string` | The specific model version used. |
-| `usage` | `object` | Stats: `inputTokens`, `outputTokens`, `thoughtsTokenCount`, etc. |
+```typescript
+{
+  text: string;             // The generated transcript
+  thoughts?: string;        // AI's internal reasoning/thoughts
+  model: string;            // The model version used
+  fileUri: string;          // URI for reusing the uploaded file (valid for 48h)
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    thoughtsTokenCount: number;
+    processingTimeSec: number;
+  }
+}
+```
 
 ---
 
-## 🛡️ Transcription Rules (Locked Logic)
+## 🛡️ Transcription Rules (Locked Core)
 
-This library is hardcoded with professional transcription rules ensuring:
-1.  **Verbatim Content:** Captures stutters, hesitations, and repetitions.
-2.  **Noise Suppression:** Ignores background noise, focuses on speech.
-3.  **No Interpretation:** No summaries or translations (unless requested via prompt).
-4.  **Style Integrity:** Matches the natural flow and pronunciation.
+The library enforces strict rules via system instructions to ensure professional quality:
+1.  **Verbatim:** Captures stutters, fillers ("um", "ah"), and repetitions.
+2.  **Accuracy:** Focuses on speaker clarity while ignoring background noise.
+3.  **No Hallucinations:** Does not add opinions or information not present in the audio.
+4.  **Formatting:** Respects natural pauses and grammar.
 
 ---
 
 ## 📄 License
 
-ISC - Distributed under the ISC License. See `LICENSE` for more information.
-
-Copyright (c) 2026, **Smart Tell Line**.
+ISC - Copyright (c) 2026 **Smart Tell Line**.
