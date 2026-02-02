@@ -1,21 +1,23 @@
 # geminisst 🎙️
 
-**geminisst** is a revolutionary, professional-grade Node.js library for high-accuracy **Audio-to-Text** conversion. Powered by **Google's Gemini 2.5 Flash Lite**, it offers a massive **1 Million+ context window** and next-gen multimodal understanding that suns traditional STT engines.
+**geminisst** is a revolutionary, professional-grade Node.js library for high-accuracy **Audio-to-Text** conversion. Powered by **Google's Gemini 2.5 Flash Lite** (default) and compatible with the newest **Gemini 3** series, it offers a massive **1 Million+ context window** and next-gen multimodal understanding.
 
-Whether it's a 3-second voice clip or a multi-hour podcast, `geminisst` processes it with lightning speed, incredible cost-efficiency, and deep reasoning capabilities.
+Unlike traditional STT engines, `geminisst` leverages the **Files API** for all requests, ensuring stability and accuracy whether you are processing a 3-second voice note or a multi-hour lecture.
 
 ---
 
 ## 🚀 Key Features
 
-*   **Gemini 2.5 Flash Lite Engine:** Optimized for the latest AI architecture, ensuring ultra-fast response times.
-*   **1M+ Context Window:** Process massive audio files (up to several hours) in a single request.
-*   **Dynamic Thinking (Reasoning):** Uses `thinkingBudget: -1` to allow the AI to reason about the audio (accents, context, noise) before transcribing.
-*   **AI Thought Summaries:** Access the AI's internal reasoning process (`thoughts`) to understand *how* it arrived at the transcript.
-*   **Locked Core Logic:** Built-in, unoverrideable system instructions ensure the AI acts as a pure transcription engine (no summaries, no opinions, 100% verbatim).
-*   **Automatic Language Detection:** Seamlessly handles Hindi, English, Hinglish, and many other languages without manual configuration.
-*   **Processing Metadata:** Real-time tracking of token usage and exact processing time in seconds.
-*   **TypeScript Native:** Full type safety and IntelliSense support for a superior developer experience.
+*   **Gemini 2.5 Flash Lite (Default):** Optimized for cost-efficiency and speed, pre-configured with `thinkingBudget: -1` (Dynamic Thinking).
+*   **Gemini 3 Ready:** Full support for the latest **Gemini 3 Flash** and **Pro** models using `thinkingLevel`.
+*   **Universal Files API:** All audio is processed via the robust Files API, eliminating size limits and base64 overhead.
+*   **Intelligent Reasoning:**
+    *   **Gemini 2.5:** Controls reasoning via `thinkingBudget` (Default: Dynamic).
+    *   **Gemini 3:** Controls reasoning via `thinkingLevel` (minimal, low, medium, high).
+*   **Locked Core Logic:** Built-in system instructions ensure 100% verbatim transcription (no summaries, no opinions).
+*   **Automatic Language Detection:** Seamlessly handles Hindi, English, Hinglish, and mixed languages.
+*   **Rich Metadata:** Real-time tracking of token usage, thoughts, and processing time.
+*   **TypeScript Native:** Full type safety and IntelliSense.
 
 ---
 
@@ -29,10 +31,28 @@ npm install geminisst
 
 ---
 
+## 🧪 Testing
+
+We provide dedicated test commands to verify different models safely.
+
+### 1. Default Test (Gemini 2.5 Flash Lite)
+Runs the standard transcription test using the default model.
+```bash
+npm test
+```
+
+### 2. Gemini 3 Test (Gemini 3 Flash Preview)
+Runs the test specifically using the Gemini 3 model with `thinkingLevel` configuration.
+```bash
+npm run test:gemini3
+```
+
+---
+
 ## 🛠️ Quick Start
 
-### 1. Simple Transcription
-The most basic way to use `geminisst`.
+### 1. Simple Transcription (Default)
+Uses **Gemini 2.5 Flash Lite** with Dynamic Thinking.
 
 ```javascript
 import { audioToText } from 'geminisst';
@@ -43,72 +63,84 @@ const result = await audioToText('./meeting.mp3', apiKey);
 console.log("Transcript:", result.text);
 ```
 
-### 2. Advanced Usage (With Thoughts & Metadata)
-Get deeper insights into the transcription process.
+### 2. Using Gemini 3 (Advanced)
+Switch to **Gemini 3 Flash** and use `thinkingLevel`.
 
 ```javascript
 import { audioToText } from 'geminisst';
 
-async function transcribeWithInsights() {
+async function transcribeWithGemini3() {
   const result = await audioToText('./interview.wav', 'YOUR_API_KEY', {
-    prompt: "The audio is in a mix of Hindi and English. Please use Devanagari for Hindi parts.",
+    model: "gemini-3-flash-preview", // Switch model
+    thinkingLevel: "high",           // Gemini 3 specific config
     verbose: true
   });
 
-  // Access the AI's "Internal Monologue"
   if (result.thoughts) {
-    console.log("AI Reasoning:", result.thoughts);
+    console.log("Gemini 3 Thoughts:", result.thoughts);
   }
-
-  // Exact spoken words
   console.log("Transcript:", result.text);
-
-  // Performance metrics
-  console.log(`Finished in ${result.usage.processingTimeSec}s`);
-  console.log(`Total Tokens used: ${result.usage.totalTokens}`);
 }
 
-transcribeWithInsights();
+transcribeWithGemini3();
+```
+
+### 3. Reuse File Uploads (Efficiency)
+Avoid re-uploading the same file. The API returns a `fileUri` valid for 48 hours.
+
+```javascript
+// 1. First call uploads the file
+const result1 = await audioToText('./large-audio.mp3', apiKey);
+console.log("File URI:", result1.fileUri); // e.g., https://...
+
+// 2. Second call reuses the URI (Instant processing, no upload)
+const result2 = await audioToText(result1.fileUri, apiKey, {
+    prompt: "Summarize this now.",
+    model: "gemini-3-flash-preview"
+});
 ```
 
 ---
 
 ## 📖 API Reference
 
-### `audioToText(filePath, apiKey, options?)`
+### `audioToText(audioInput, apiKey, options?)`
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
-| `filePath` | `string` | Absolute or relative path to the audio file. |
+| `audioInput` | `string` | Absolute path to the local audio file **OR** an existing `https://` File URI. |
 | `apiKey` | `string` | Your Google Gemini API Key. |
-| `options` | `SSTOptions` | (Optional) Advanced configuration. |
+| `options` | `SSTOptions` | (Optional) Configuration for models and thinking. |
 
 ### `SSTOptions`
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `prompt` | `string` | `undefined` | Style/Language guidance (e.g., "Transcribe in English letters"). |
-| `model` | `string` | `"gemini-2.5-flash-lite"` | Override default model. |
-| `verbose` | `boolean` | `false` | Log internal steps for debugging. |
+| `prompt` | `string` | `undefined` | Guidance (e.g., "Transcribe in Hindi"). |
+| `model` | `string` | `"gemini-2.5-flash-lite"` | The model to use. Supports both 2.5 and 3 series. |
+| `verbose` | `boolean` | `false` | Log upload and processing steps. |
+| `thinkingBudget` | `number` | `-1` | **(Gemini 2.5 Only)** Token budget for reasoning (-1 = dynamic). |
+| `thinkingLevel` | `string` | `undefined` | **(Gemini 3 Only)** "minimal", "low", "medium", "high". |
 
 ### `TranscriptionResult`
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
-| `text` | `string` | The 100% accurate, verbatim transcript. |
-| `thoughts` | `string` | AI's thought summary explaining the reasoning/language detection. |
+| `text` | `string` | The verbatim transcript. |
+| `thoughts` | `string` | AI's internal reasoning process. |
+| `fileUri` | `string` | **New:** The reusable File URI (valid for 48h). |
 | `model` | `string` | The specific model version used. |
-| `usage` | `object` | Stats: `inputTokens`, `outputTokens`, `totalTokens`, `processingTimeSec`. |
+| `usage` | `object` | Stats: `inputTokens`, `outputTokens`, `thoughtsTokenCount`, etc. |
 
 ---
 
 ## 🛡️ Transcription Rules (Locked Logic)
 
-This library is hardcoded with professional transcription rules that **cannot be overridden**, ensuring reliability:
-1.  **Verbatim Content:** Captures stutters, hesitations, and repetitions exactly.
-2.  **Noise Suppression:** Automatically ignores background noise and focuses on speech.
-3.  **No Interpretation:** Forbidden from adding opinions, interpretations, or extra content.
-4.  **Style Integrity:** Maintains the natural flow and pronunciation matching of the spoken words.
+This library is hardcoded with professional transcription rules ensuring:
+1.  **Verbatim Content:** Captures stutters, hesitations, and repetitions.
+2.  **Noise Suppression:** Ignores background noise, focuses on speech.
+3.  **No Interpretation:** No summaries or translations (unless requested via prompt).
+4.  **Style Integrity:** Matches the natural flow and pronunciation.
 
 ---
 
