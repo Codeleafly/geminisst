@@ -89,6 +89,8 @@ transcribeWithGemini3();
 ### 3. Reusing File URIs (Performance Optimization)
 The Files API saves your audio for 48 hours. You can reuse the `fileUri` to perform multiple operations (like different prompts) on the same file without re-uploading.
 
+> **💡 Pro Tip:** When you pass a `https://` URI as the first argument, the library **automatically skips the upload process** and goes straight to transcription. This saves significant time and bandwidth for large files.
+
 ```javascript
 import { audioToText } from 'geminisst';
 
